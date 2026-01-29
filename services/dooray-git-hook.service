@@ -1,0 +1,14 @@
+[Unit]
+Description=Dooray Git Hook Server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/kim/dooray-claude-bot
+ExecStart=/usr/bin/python3 dooray_git_hook.py
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,14 @@
+[Unit]
+Description=Claude AGI Core - Autonomous Agent
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/kim/dooray-claude-bot/agi
+ExecStart=/usr/bin/python3 /home/kim/dooray-claude-bot/agi/core.py
+Restart=always
+RestartSec=30
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

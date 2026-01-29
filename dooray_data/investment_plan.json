@@ -1,0 +1,161 @@
+{
+  "owner": "kimhw",
+  "name": "현우",
+  "created": "2026-01-29",
+  "updated": "2026-01-29",
+
+  "accounts": {
+    "irp": {
+      "broker": "기존 증권사",
+      "balance": "미확인",
+      "holdings": ["S&P500 ETF"],
+      "note": "30% 안전자산 규정 있음"
+    },
+    "isa": {
+      "broker": "KB증권",
+      "type": "중개형",
+      "balance": 66000000,
+      "status": "이전 예정",
+      "transfer_deadline": "2026-02-28",
+      "note": "KB증권 타사이전 2배 인정 이벤트"
+    }
+  },
+
+  "isa_portfolio": {
+    "total": 66000000,
+    "allocations": [
+      {"etf": "TIGER 미국S&P500", "ratio": 0.40, "amount": 26400000, "purpose": "핵심-미국대형주"},
+      {"etf": "KODEX 미국나스닥100", "ratio": 0.20, "amount": 13200000, "purpose": "성장-기술주"},
+      {"etf": "ACE 미국배당다우존스", "ratio": 0.15, "amount": 9900000, "purpose": "배당+안정"},
+      {"etf": "KODEX 금현물", "ratio": 0.10, "amount": 6600000, "purpose": "헷지-장기보유"},
+      {"etf": "TIGER 단기채권액티브", "ratio": 0.10, "amount": 6600000, "purpose": "안전자산"},
+      {"etf": "현금", "ratio": 0.05, "amount": 3300000, "purpose": "추가매수대기"}
+    ]
+  },
+
+  "trading_portfolio": {
+    "description": "단기 트레이딩 (별도 자금)",
+    "updated": "2026-01-29",
+    "strategy": "2026년 주도섹터 집중 - 반도체/방산",
+    "stocks": [
+      {
+        "name": "SK하이닉스",
+        "code": "000660",
+        "ratio": 0.30,
+        "target_price": "84-100만원",
+        "reason": "HBM 점유율 63%, 2026 영업익 100조 전망"
+      },
+      {
+        "name": "한화에어로스페이스",
+        "code": "012450",
+        "ratio": 0.25,
+        "target_price": "80만원+",
+        "reason": "수주잔고 31조, 베트남 K9 1조 수주 예상"
+      },
+      {
+        "name": "현대로템",
+        "code": "064350",
+        "ratio": 0.20,
+        "target_price": "15만원+",
+        "reason": "폴란드 2차 7-9조, 루마니아 4.5조 수주"
+      },
+      {
+        "name": "한미반도체",
+        "code": "042700",
+        "ratio": 0.15,
+        "target_price": "20만원+",
+        "reason": "HBM 후공정 장비 독점"
+      },
+      {
+        "name": "현금",
+        "code": null,
+        "ratio": 0.10,
+        "target_price": null,
+        "reason": "조정 대비"
+      }
+    ],
+    "watchlist": [
+      {"name": "삼성전자", "code": "005930", "target": "15-17만원", "note": "HBM4 양산, 저평가"},
+      {"name": "HD현대중공업", "code": "329180", "note": "LNG선 수주"},
+      {"name": "HD현대일렉트릭", "code": "267260", "note": "전력기기 수요"},
+      {"name": "한국항공우주(KAI)", "code": "047810", "note": "영업익 +44% 전망"},
+      {"name": "LG에너지솔루션", "code": "373220", "note": "ESS 바닥 확인 후"}
+    ]
+  },
+
+  "market_analysis": {
+    "date": "2026-01-29",
+    "global": {
+      "fed": "금리 동결, 2026년 2회 인하 전망",
+      "bigtech_earnings": {
+        "meta": "매출 $59.9B (+24%), EPS $8.88 서프라이즈",
+        "microsoft": "매출 $81.3B (+17%), Azure +39%",
+        "tesla": "예상치 하회, 로보택시 기대",
+        "apple": "1/29 발표 예정, 10-12% 성장 전망"
+      },
+      "risk": ["트럼프 관세 (캐나다 100%, 유럽 8개국)", "Fed 의장 교체 5월"]
+    },
+    "korea_sectors": {
+      "rank1": {"sector": "반도체", "reason": "HBM 슈퍼사이클, AI 수요"},
+      "rank2": {"sector": "방산", "reason": "글로벌 수주 100조"},
+      "rank3": {"sector": "조선", "reason": "LNG선, 친환경 선박"},
+      "rank4": {"sector": "2차전지", "reason": "ESS 수요, 바닥 탈출"},
+      "rank5": {"sector": "기계/전력기기", "reason": "원전, 전력 인프라"}
+    },
+    "sources": [
+      "Bloomberg 2026 Outlook",
+      "대신증권 유망종목 Top10",
+      "유안타증권 2026 Top Picks",
+      "하나금융투자 2026 전망",
+      "SK하이닉스 뉴스룸"
+    ]
+  },
+
+  "buy_schedule": {
+    "week1": {
+      "date": "2026-02-03 ~",
+      "ratio": 0.50,
+      "amount": 33000000,
+      "detail": [
+        {"etf": "TIGER 미국S&P500", "amount": 13200000},
+        {"etf": "KODEX 미국나스닥100", "amount": 6600000},
+        {"etf": "ACE 미국배당다우존스", "amount": 4950000},
+        {"etf": "KODEX 금현물", "amount": 3300000},
+        {"etf": "TIGER 단기채권액티브", "amount": 4950000}
+      ]
+    },
+    "week2": {
+      "date": "2026-02-10 ~",
+      "ratio": 0.25,
+      "amount": 16500000,
+      "note": "시장 상황 보고 비중 조절"
+    },
+    "week3_4": {
+      "date": "2026-02-17 ~",
+      "ratio": 0.25,
+      "amount": 16500000,
+      "note": "하락시 S&P500/나스닥 확대, 상승시 현금 유지"
+    }
+  },
+
+  "rules": [
+    "골드선물 X, 금현물 O (롤오버 비용 회피)",
+    "분할매수 원칙 (한번에 몰빵 금지)",
+    "하락장에서 추가매수 기회 활용",
+    "ISA 3년 유지 (세제혜택)",
+    "단기 트레이딩: 손절 -7%, 익절 +15-20%"
+  ],
+
+  "pending_tasks": [
+    {"task": "KB증권 ISA 이전 완료", "deadline": "2026-02-28", "status": "pending"},
+    {"task": "현대카드 M포인트 소진", "deadline": "미정", "status": "pending"},
+    {"task": "현대카드 탈퇴", "deadline": "미정", "status": "pending"},
+    {"task": "Apple 실적 확인 후 반도체 영향 체크", "deadline": "2026-01-30", "status": "pending"}
+  ],
+
+  "log": [
+    {"date": "2026-01-29", "action": "투자 계획 수립", "note": "6600만원 중개형 ISA, 분할매수 전략"},
+    {"date": "2026-01-29", "action": "시장 분석 추가", "note": "글로벌 뉴스 + 증권사 리포트 기반 종목 선정"},
+    {"date": "2026-01-29", "action": "단기 트레이딩 포트폴리오 추가", "note": "SK하이닉스 30%, 한화에어로 25%, 현대로템 20%, 한미반도체 15%"}
+  ]
+}

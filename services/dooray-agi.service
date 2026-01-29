@@ -1,0 +1,14 @@
+[Unit]
+Description=Dooray AGI Bot
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/kim/dooray-claude-bot
+ExecStart=/usr/bin/python3 dooray_agi_bot.py
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

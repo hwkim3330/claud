@@ -23,6 +23,7 @@ from telegram.request import HTTPXRequest
 # 설정
 BOT_TOKEN = "8492678625:AAHEmQQAwRyfI9K1d6n_ubigVnrNLAbUzH0"
 MEMORY_FILE = Path("/home/kim/dooray-claude-bot/user_memory.json")
+INVESTMENT_FILE = Path("/home/kim/dooray-claude-bot/dooray_data/investment_plan.json")
 ALLOWED_USERS = []  # 비어있으면 모두 허용
 
 # 로깅
@@ -88,8 +89,8 @@ def is_allowed(user_id: int) -> bool:
     return user_id in ALLOWED_USERS
 
 
-def ask_claude(prompt: str, context: str = "", system: str = "") -> str:
-    """Claude에게 질문 (컨텍스트 포함)"""
+def ask_claude(prompt: str, context: str = "", system: str = "", model: str = "sonnet") -> str:
+    """Claude에게 질문 (컨텍스트 포함, 모델 선택 가능)"""
 
     system_prompt = system or """너는 텔레그램에서 동작하는 개인 AI 어시스턴트야.
 특징:
@@ -113,7 +114,7 @@ def ask_claude(prompt: str, context: str = "", system: str = "") -> str:
     full_prompt = f"{context}{prompt}" if context else prompt
 
     try:
-        cmd = ["claude", "-p", full_prompt, "--model", "sonnet"]
+        cmd = ["claude", "-p", full_prompt, "--model", model]
         if system_prompt:
             cmd.extend(["--system-prompt", system_prompt])
 
@@ -159,6 +160,13 @@ def detect_intent(text: str) -> dict:
     """사용자 의도 파악"""
     text_lower = text.lower()
 
+    # 모델 선택 확인
+    model = "sonnet"  # 기본값
+    if any(k in text_lower for k in ['opus', '오푸스', '오퍼스']):
+        model = "opus"
+    elif any(k in text_lower for k in ['haiku', '하이쿠']):
+        model = "haiku"
+
     # 이미지 생성
     if any(k in text_lower for k in ['이미지', '그려', '그림', 'image', 'draw', '생성해', '만들어줘']):
         if any(k in text_lower for k in ['이미지', '그림', 'image']):
@@ -168,6 +176,18 @@ def detect_intent(text: str) -> dict:
     # 뉴스
     if any(k in text_lower for k in ['뉴스', 'news', '소식', '오늘 뭐']):
         return {"type": "news"}
+
+    # 포트폴리오
+    if any(k in text_lower for k in ['포트폴리오', '내투자', '내 투자', 'portfolio']):
+        return {"type": "portfolio"}
+
+    # 시세/현재가
+    if any(k in text_lower for k in ['시세', '현재가', 'prices', '종목가격']):
+        return {"type": "prices"}
+
+    # 시장 분석
+    if any(k in text_lower for k in ['시장분석', '분석', 'analysis']):
+        return {"type": "analysis"}
 
     # 주식
     if any(k in text_lower for k in ['주식', 'stock', '투자', '시장', '증시']):
@@ -194,7 +214,7 @@ def detect_intent(text: str) -> dict:
     if any(k in text_lower for k in ['코드', 'code', '프로그램', '스크립트', '함수']):
         return {"type": "code", "text": text}
 
-    return {"type": "chat", "text": text}
+    return {"type": "chat", "text": text, "model": model}
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -215,6 +235,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [
             InlineKeyboardButton("📰 뉴스", callback_data="news"),
             InlineKeyboardButton("📈 주식", callback_data="stock"),
+        ],
+        [
+            InlineKeyboardButton("💰 포트폴리오", callback_data="portfolio"),
+            InlineKeyboardButton("📊 시세", callback_data="prices"),
         ],
         [
             InlineKeyboardButton("🍽️ 점심", callback_data="lunch"),
@@ -252,6 +276,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "stock":
         await query.message.reply_text("📈 주식 분석 중...")
         await send_stock(query.message)
+    elif data == "portfolio":
+        await send_portfolio(query.message)
+    elif data == "prices":
+        await send_prices(query.message)
     elif data == "lunch":
         await query.message.reply_text("🍽️ 점심 메뉴 확인 중... (1-2분)")
         await send_lunch(query.message)
@@ -376,6 +404,109 @@ async def send_lunch(message):
         await message.reply_text(f"메뉴 확인 실패 😅\n{str(e)[:100]}")
 
 
+async def send_portfolio(message):
+    """투자 포트폴리오 전송"""
+    try:
+        if not INVESTMENT_FILE.exists():
+            await message.reply_text("❌ 투자 계획이 없어요")
+            return
+
+        plan = json.loads(INVESTMENT_FILE.read_text())
+
+        # ISA 포트폴리오
+        isa = plan.get("isa_portfolio", {})
+        result = ""
+        if isa:
+            total = isa.get("total", 0)
+            result += f"💰 ISA 포트폴리오 ({total/10000:.0f}만원)\n\n"
+            for a in isa.get("allocations", []):
+                result += f"• {a['etf']}: {a['ratio']*100:.0f}%\n"
+
+        # 단기 트레이딩
+        trading = plan.get("trading_portfolio", {})
+        if trading:
+            result += f"\n📊 단기 트레이딩\n"
+            for s in trading.get("stocks", []):
+                if s.get("code"):
+                    result += f"• {s['name']}: {s['ratio']*100:.0f}% (목표: {s.get('target_price', 'N/A')})\n"
+
+        await message.reply_text(result or "포트폴리오 정보 없음")
+    except Exception as e:
+        await message.reply_text(f"오류: {str(e)[:100]}")
+
+
+async def send_prices(message):
+    """주요 종목 현재가 전송"""
+    try:
+        stock_list = [
+            ("SK하이닉스", "000660"),
+            ("삼성전자", "005930"),
+            ("한화에어로", "012450"),
+            ("현대로템", "064350"),
+            ("한미반도체", "042700"),
+        ]
+
+        results = ["📊 주요 종목 현재가\n"]
+
+        for name, code in stock_list:
+            try:
+                url = f"https://m.stock.naver.com/api/stock/{code}/basic"
+                resp = requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
+                data = resp.json()
+
+                price = data.get("closePrice", "N/A")
+                rate = data.get("fluctuationsRatio", "0")
+
+                emoji = "🔴" if float(rate) > 0 else "🔵" if float(rate) < 0 else "⚪"
+                sign = "+" if float(rate) > 0 else ""
+                results.append(f"{emoji} {name}: {price}원 ({sign}{rate}%)")
+            except:
+                results.append(f"⚪ {name}: 조회 실패")
+
+        await message.reply_text("\n".join(results))
+    except Exception as e:
+        await message.reply_text(f"오류: {str(e)[:100]}")
+
+
+async def send_market_analysis(message):
+    """시장 분석 전송"""
+    try:
+        if not INVESTMENT_FILE.exists():
+            await message.reply_text("❌ 분석 데이터가 없어요")
+            return
+
+        plan = json.loads(INVESTMENT_FILE.read_text())
+        analysis = plan.get("market_analysis", {})
+
+        if not analysis:
+            await message.reply_text("❌ 시장 분석 데이터가 없어요")
+            return
+
+        result = f"📈 시장 분석 ({analysis.get('date', 'N/A')})\n\n"
+
+        # 글로벌
+        glob = analysis.get("global", {})
+        if glob:
+            result += f"🌍 글로벌\n"
+            result += f"• Fed: {glob.get('fed', 'N/A')}\n"
+            risks = glob.get("risk", [])
+            if risks:
+                result += f"• 리스크: {risks[0][:30]}...\n"
+
+        # 한국 섹터
+        sectors = analysis.get("korea_sectors", {})
+        if sectors:
+            result += f"\n🇰🇷 주도 섹터\n"
+            for i in range(1, 4):
+                s = sectors.get(f"rank{i}", {})
+                if s:
+                    result += f"{i}. {s.get('sector', '')}\n"
+
+        await message.reply_text(result)
+    except Exception as e:
+        await message.reply_text(f"오류: {str(e)[:100]}")
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """메시지 처리 - AGI 스타일"""
     user_id = update.effective_user.id
@@ -419,6 +550,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_stock(update.message)
         return
 
+    # 포트폴리오
+    if intent["type"] == "portfolio":
+        await send_portfolio(update.message)
+        return
+
+    # 시세
+    if intent["type"] == "prices":
+        await send_prices(update.message)
+        return
+
+    # 시장 분석
+    if intent["type"] == "analysis":
+        await send_market_analysis(update.message)
+        return
+
     # 점심
     if intent["type"] == "lunch":
         await update.message.reply_text("🍽️ 메뉴 확인 중... (1-2분)")
@@ -441,12 +587,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 일반 대화 - Claude
     user_context = memory.get_context(user_id)
+    model = intent.get("model", "sonnet")
 
     # 타이핑 표시
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
-    response = ask_claude(text, context=user_context)
-    await update.message.reply_text(response)
+    # 모델 표시
+    model_emoji = {"opus": "🧠", "sonnet": "💬", "haiku": "⚡"}.get(model, "💬")
+
+    response = ask_claude(text, context=user_context, model=model)
+    await update.message.reply_text(f"{model_emoji} ({model})\n\n{response}")
 
     memory.update_history(user_id, "assistant", response[:200])
 
