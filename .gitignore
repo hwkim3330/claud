@@ -1,5 +1,9 @@
-logs/
-*.log
 __pycache__/
 *.pyc
+*.log
+*.json
+!config.json
 .env
+agent_state.json
+moltbot/
+node_modules/
