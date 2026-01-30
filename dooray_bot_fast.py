@@ -1,28 +1,48 @@
 #!/usr/bin/env python3
 """
-두레이 Claude 봇 - 이미지 생성 지원
-/s [질문] - Claude 채팅
+두레이 Claude 봇 - Haiku 컨트롤러 + 주식 + 이미지
+/s [질문] - Haiku가 적절한 모델 선택
+/s 시세 - 주식 현황
 /s 이미지 [설명] - 이미지 생성
-/s 그려줘 [설명] - 이미지 생성
 """
 
 from flask import Flask, request, jsonify
 import subprocess
 import threading
 import urllib.parse
+import requests
 import os
 import re
+import json
+from pathlib import Path
 
 app = Flask(__name__)
+
+# 키움 트레이더 연동
+KIWOOM_STATE = Path("/home/kim/dooray-claude-bot/kiwoom_state.json")
 
 class ClaudeWorker:
     def __init__(self):
         self.lock = threading.Lock()
 
-    def ask(self, question):
-        """Claude에게 질문"""
+    def ask(self, question, use_router=True):
+        """Claude에게 질문 (Haiku 컨트롤러 사용)"""
         with self.lock:
             try:
+                if use_router:
+                    # 프록시를 통해 Haiku 컨트롤러 사용
+                    resp = requests.post(
+                        "http://127.0.0.1:8180/v1/messages",
+                        json={"model": "auto", "messages": [{"role": "user", "content": question}]},
+                        timeout=120
+                    )
+                    if resp.status_code == 200:
+                        answer = resp.json().get("content", [{}])[0].get("text", "응답 없음")
+                        if len(answer) > 3000:
+                            answer = answer[:3000] + "\n...(생략)"
+                        return answer
+
+                # fallback: 직접 Claude CLI
                 result = subprocess.run(
                     ["claude", "-p", question, "--model", "haiku"],
                     capture_output=True,
@@ -60,6 +80,41 @@ class ClaudeWorker:
 
 # 워커 인스턴스
 claude = ClaudeWorker()
+
+
+def get_stock_status():
+    """주식 현황 조회"""
+    try:
+        if KIWOOM_STATE.exists():
+            state = json.loads(KIWOOM_STATE.read_text())
+            watchlist = state.get("watchlist", ["005930", "000660", "035720"])
+        else:
+            watchlist = ["005930", "000660", "035720"]
+
+        status = []
+        for code in watchlist:
+            try:
+                url = f"https://m.stock.naver.com/api/stock/{code}/basic"
+                resp = requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
+                if resp.status_code == 200:
+                    data = resp.json()
+                    name = data.get("stockName", code)
+                    price = data.get("closePrice", "N/A")
+                    change = float(data.get("fluctuationsRatio", "0"))
+                    emoji = "🔴" if change < 0 else "🟢" if change > 0 else "⚪"
+                    status.append(f"{emoji} **{name}**: {price}원 ({change:+.2f}%)")
+            except:
+                pass
+
+        return "\n".join(status) if status else "시세 조회 실패"
+    except Exception as e:
+        return f"오류: {e}"
+
+
+def is_stock_request(text):
+    """주식 관련 요청인지 확인"""
+    keywords = ["시세", "주식", "stock", "주가", "코스피", "코스닥", "삼성", "하이닉스", "카카오"]
+    return any(kw in text.lower() for kw in keywords)
 
 def generate_image_url(prompt, model="zimage"):
     """Pollinations.ai로 이미지 생성 URL 만들기"""
@@ -103,7 +158,7 @@ def extract_image_prompt(text):
 
 @app.route("/slash", methods=["POST"])
 def slash():
-    """두레이 슬래시 커맨드"""
+    """두레이 슬래시 커맨드 - Haiku 컨트롤러"""
     data = request.json or {}
 
     user = data.get("userName", "사용자")
@@ -114,8 +169,16 @@ def slash():
 
     if not text:
         return jsonify({
-            "text": "💡 **사용법:**\n• `/s [질문]` - Claude에게 질문\n• `/s 이미지 [설명]` - 이미지 생성\n• `/s 그려줘 [설명]` - 이미지 생성",
+            "text": "💡 **사용법:**\n• `/s [질문]` - Haiku가 적절한 모델 선택\n• `/s 시세` - 주식 현황\n• `/s 이미지 [설명]` - 이미지 생성",
             "responseType": "ephemeral"
+        })
+
+    # 주식 시세 요청
+    if text in ["시세", "주식", "stock"]:
+        status = get_stock_status()
+        return jsonify({
+            "text": f"📊 **주식 현황**\n\n{status}",
+            "responseType": "inChannel"
         })
 
     # 이미지 생성 요청 확인
@@ -144,8 +207,8 @@ def slash():
             }]
         })
 
-    # 일반 Claude 질문
-    answer = claude.ask(text)
+    # Haiku 컨트롤러로 라우팅 (자동 모델 선택)
+    answer = claude.ask(text, use_router=True)
     print(f"[응답] {answer[:50]}...")
 
     return jsonify({

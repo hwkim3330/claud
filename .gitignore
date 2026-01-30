@@ -7,3 +7,4 @@ __pycache__/
 agent_state.json
 moltbot/
 node_modules/
+.env.kiwoom
